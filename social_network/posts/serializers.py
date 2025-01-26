@@ -1,32 +1,34 @@
 from rest_framework import serializers
-from posts.models import Post, Comment
+from posts.models import Comment, PostImage, Post, Like
 
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'text', 'created_at']
-        
+        fields = ['author', 'text', 'created_at']
+
+class CommentPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['id', 'text', 'created_at']
+
+
+class ImagesPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostImage
+        fields = ['post', 'image']
+
 
 class PostSerializer(serializers.ModelSerializer):
-    
-    comments = CommentSerializer(many=True, read_only = True)
+    comments = CommentSerializer(many=True, read_only=True)
+    images = ImagesPostSerializer(many=True, read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'text', 'image', 'created_at', 'total_likes', 'comments']
-        read_only_fields = ['author']
+        fields = ['id', 'text', 'images', 'created_at', 'comments']
 
-    def create(self, validated_data):
-        comments_data = validated_data.pop('comments')
-        post = Post.objects.create(**validated_data)
-        for comment_data in comments_data:
-            Comment.objects.create(post=post, **comment_data)
-        return post
-
-    def to_representation(self, instance):
-        representation =  super().to_representation(instance)
-        representation['comments'] = list([CommentSerializer(comment).data for comment in Comment.objects.filter(post=instance)])
-
+    def to_representation(self, post):
+        representation = super().to_representation(post)
+        representation['likes_count'] = post.likes.count()
         return representation
 
